@@ -10,9 +10,14 @@
 */
 package unsafe
 
+// ArbitraryType在这仅用于文档目的，实际上并不是不安全包的一部分。
+// 它表示任意的Go表达式的类型。
+
 // ArbitraryType is here for the purposes of documentation only and is not actually
 // part of the unsafe package. It represents the type of an arbitrary Go expression.
 type ArbitraryType int
+
+// Pointer 相当于任意类型得指针. 类型Pointer有4种特殊的操作可用,其他类型是不行的
 
 // Pointer represents a pointer to an arbitrary type. There are four special operations
 // available for type Pointer that are not available for other types:

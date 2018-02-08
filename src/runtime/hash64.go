@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 哈希算法的启发:
+//   xxhash: https://code.google.com/p/xxhash/
+// cityhash: https://code.google.com/p/cityhash/
+
 // Hashing algorithm inspired by
 //   xxhash: https://code.google.com/p/xxhash/
 // cityhash: https://code.google.com/p/cityhash/
@@ -102,6 +106,9 @@ func memhash64(p unsafe.Pointer, seed uintptr) uintptr {
 	h ^= h >> 32
 	return uintptr(h)
 }
+
+//注意: 为了让编译器使用rotl指令，我们需要不断地手工折叠移位量。
+//TODO: 让编译器在内敛后使用rotl指令
 
 // Note: in order to get the compiler to issue rotl instructions, we
 // need to constant fold the shift amount by hand.
