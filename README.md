@@ -1,4 +1,4 @@
-# Go语言代码中文注释
+# Go代码中文注释
 
 # The Go Programming Language
 
