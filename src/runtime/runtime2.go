@@ -97,6 +97,10 @@ const (
 	_Pdead
 )
 
+// 互斥锁.  在未竞争的情况下,和自旋锁一样快(仅仅是用户级的指令)
+// 但是在竞争情况下,他们将在内核中sleep,
+// 默认的Mutex是没有锁的
+
 // Mutual exclusion locks.  In the uncontended case,
 // as fast as spin locks (just a few user-level instructions),
 // but on the contention path they sleep in the kernel.

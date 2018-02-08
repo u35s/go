@@ -51,11 +51,19 @@ func lock(l *mutex) {
 	}
 	gp.m.locks++
 
+	// 碰巧获得锁
+	// Xchg 交换
 	// Speculative grab for lock.
 	v := atomic.Xchg(key32(&l.key), mutex_locked)
 	if v == mutex_unlocked {
 		return
 	}
+
+	// wait要么是MUTEX_LOCKED要么是MUTEX_SLEEPING,
+	// 取决于是否有一个线程在这个互斥锁上sleeping
+	// 如果我们更改了从MUTEX_SLEEPING到其他的值,
+	// 我们一定要在返回之前改为MUTEX_SLEEPING
+	// 确保睡眠线程得到唤醒调用
 
 	// wait is either MUTEX_LOCKED or MUTEX_SLEEPING
 	// depending on whether there is a thread sleeping
@@ -66,6 +74,9 @@ func lock(l *mutex) {
 	// its wakeup call.
 	wait := v
 
+	// 在单核处理器上,不用自旋锁
+	// 在多核处理器上,尝试自旋锁
+
 	// On uniprocessors, no point spinning.
 	// On multiprocessors, spin for ACTIVE_SPIN attempts.
 	spin := 0
@@ -73,9 +84,11 @@ func lock(l *mutex) {
 		spin = active_spin
 	}
 	for {
+		// 尝试自旋获得锁
 		// Try for lock, spinning.
 		for i := 0; i < spin; i++ {
 			for l.key == mutex_unlocked {
+				//Cas 比较和交换
 				if atomic.Cas(key32(&l.key), mutex_unlocked, wait) {
 					return
 				}
@@ -83,6 +96,7 @@ func lock(l *mutex) {
 			procyield(active_spin_cnt)
 		}
 
+		// 尝试调度获得锁
 		// Try for lock, rescheduling.
 		for i := 0; i < passive_spin; i++ {
 			for l.key == mutex_unlocked {

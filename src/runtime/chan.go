@@ -4,7 +4,12 @@
 
 package runtime
 
+// 这个文件包含了Go channels的实现
 // This file contains the implementation of Go channels.
+
+// c.sendq和c.recvq至少有一个是空的
+// 除了在单个goroutine中用一个select来发送和接受一个没有缓冲的channel情况下
+// 在这种情况下c.sendq和c.recvq仅受select语句大小的限制
 
 // Invariants:
 //  At least one of c.sendq and c.recvq is empty,
@@ -29,20 +34,26 @@ const (
 )
 
 type hchan struct {
-	qcount   uint           // total data in the queue
-	dataqsiz uint           // size of the circular queue
-	buf      unsafe.Pointer // points to an array of dataqsiz elements
+	qcount   uint           // total data in the queue 队列中总数据
+	dataqsiz uint           // size of the circular queue 环形队列的大小
+	buf      unsafe.Pointer // points to an array of dataqsiz elements,	环形队列元素数组的指针
 	elemsize uint16
 	closed   uint32
-	elemtype *_type // element type
-	sendx    uint   // send index
-	recvx    uint   // receive index
-	recvq    waitq  // list of recv waiters
-	sendq    waitq  // list of send waiters
+	elemtype *_type // element type 元素类型
+	sendx    uint   // send index 发送索引
+	recvx    uint   // receive index 接受索引
+	recvq    waitq  // list of recv waiters 接受等待者链表
+	sendq    waitq  // list of send waiters 发送等待者链表
+
+	// lock 保护hchan中的所有区域，以及在此channel上被阻塞
+	// 的sudogs中的几个区域
 
 	// lock protects all fields in hchan, as well as several
 	// fields in sudogs blocked on this channel.
-	//
+
+	// 在获得这个锁的时候不要改变其他G的状态(特别注意,不要准备G)
+	// 因为这能造成堆栈减少而死锁
+
 	// Do not change another G's status while holding this lock
 	// (in particular, do not ready a G), as this can deadlock
 	// with stack shrinking.
@@ -82,6 +93,10 @@ func makechan(t *chantype, size int) *hchan {
 		panic(plainError("makechan: size out of range"))
 	}
 
+	// 当buf中存的元素不包含指针时,Hchan不包含GC感兴趣的指针
+	// buf指向相同的allocation,elemtype,是持久的
+	// SudoG被他们自己的线程所引用,所以他们不能被收集
+
 	// Hchan does not contain pointers interesting for GC when elements stored in buf do not contain pointers.
 	// buf points into the same allocation, elemtype is persistent.
 	// SudoG's are referenced from their owning thread so they can't be collected.
@@ -119,11 +134,18 @@ func chanbuf(c *hchan, i uint) unsafe.Pointer {
 	return add(c.buf, uintptr(i)*uintptr(c.elemsize))
 }
 
+// c <- x 编译代码的入口点
 // entry point for c <- x from compiled code
 //go:nosplit
 func chansend1(c *hchan, elem unsafe.Pointer) {
 	chansend(c, elem, true, getcallerpc())
 }
+
+/*
+ * 通用single channel的发送/接受
+ * 如果block不是nil(false ?),假设不能完成操作,
+ * 对应的不会sleep,直接返回
+ */
 
 /*
  * generic single channel send/recv
@@ -153,6 +175,8 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	if raceenabled {
 		racereadpc(unsafe.Pointer(c), callerpc, funcPC(chansend))
 	}
+
+	// Fast path: 检查没有获得锁的失败非阻塞操作
 
 	// Fast path: check for failed non-blocking operation without acquiring the lock.
 	//
@@ -186,6 +210,8 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	}
 
 	if sg := c.recvq.dequeue(); sg != nil {
+		// 找到一个等待接受者. 我们直接通过channel buffer传递值给接受者
+
 		// Found a waiting receiver. We pass the value we want to send
 		// directly to the receiver, bypassing the channel buffer (if any).
 		send(c, sg, ep, func() { unlock(&c.lock) }, 3)
