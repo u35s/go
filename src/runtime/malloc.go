@@ -2,10 +2,18 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 内存分配器
 // Memory allocator.
-//
+
+// 这最初是基于tcmalloc，但已经有了很大的差异。
 // This was originally based on tcmalloc, but has diverged quite a bit.
 // http://goog-perftools.sourceforge.net/doc/tcmalloc.html
+
+// 主分配器在页运行中工作。
+// 小的分配空间(高达并包括32kb)大约被分为70个类别
+// 其中每个有多个相同大小的对象
+// 任何空闲的内存页面都可以被分割成一组对象
+// 这些对象通过空闲的bitmap来管理
 
 // The main allocator works in runs of pages.
 // Small allocation sizes (up to and including 32 kB) are
@@ -14,6 +22,10 @@
 // Any free page of memory can be split into a set of objects
 // of one size class, which are then managed using a free bitmap.
 //
+
+// 分配器的数据结构是:
+// fixalloc: 固定大小堆对象空闲链表分配器
+
 // The allocator's data structures are:
 //
 //	fixalloc: a free-list allocator for fixed-size off-heap objects,
