@@ -2,10 +2,17 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 这个文件实现了scanner,go源代码词法分析器
+// 在初始化后,接着的一次连续调用获得scanner的一个token
+
 // This file implements scanner, a lexical tokenizer for
 // Go source. After initialization, consecutive calls of
 // next advance the scanner one token at a time.
-//
+
+// 这个文件,source.go,还有tokens.go是独立的
+// (go tool compile scanner.go source.go tokens.go来编译
+// 因此可以制作成它自己的包
+
 // This file, source.go, and tokens.go are self-contained
 // (go tool compile scanner.go source.go tokens.go compiles)
 // and thus could be made into its own package.

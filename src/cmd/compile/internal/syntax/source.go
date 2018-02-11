@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// 这个文件实现了source,一个go scanner专用的带缓冲rune阅读器,
+// 连续的runes(文字)直接作为[]byte提取,而不需要以UTF-8重新编码
+
 // This file implements source, a buffered rune reader
 // which is specialized for the needs of the Go scanner:
 // Contiguous sequences of runes (literals) are extracted
